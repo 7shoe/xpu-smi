@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xpu-smi"
+version = "0.1.0"
+description = "Python wrapper for Intel xpu-smi on Aurora supercomputer nodes"
+readme = "README.md"
+license = "MIT"
+license-files = []
+requires-python = ">=3.9"
+authors = [
+    { name = "Carlo Siebenschuh", email = "siebenschuh@uchicago.edu"},
+    { name = "Carlo Siebenschuh", email = "carlo.siebenschuh@gmail.com" },
+]
+keywords = ["intel", "xpu", "gpu", "hpc", "aurora", "monitoring", "smi"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Hardware",
+    "Topic :: System :: Monitoring",
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+cpu = ["psutil>=5.9"]
+torch = ["psutil>=5.9"]
+all = ["psutil>=5.9"]
+
+[project.scripts]
+xpu-smi-py = "xpu_smi.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/7shoe/xpu-smi"
+Issues = "https://github.com/7shoe/xpu-smi/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
