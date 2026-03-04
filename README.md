@@ -3,6 +3,7 @@
 ![tests](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2F7shoe%2Fxpu-smi%2Fmain%2Ftests%2Fbadge.json&query=%24.message&label=tests&color=brightgreen)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![platform](https://img.shields.io/badge/platform-Aurora%20%7C%20Intel%20XPU-blue)
+![Intel](https://img.shields.io/badge/Intel-Inside-blue?logo=intel)
 
 Python wrapper for Intel `xpu-smi` on Aurora supercomputer nodes.
 
