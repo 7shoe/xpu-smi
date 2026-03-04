@@ -135,9 +135,18 @@ def _validate_dump(stdout: str) -> bool:
 
 def discover_candidates(
     glob_pattern: str = _GLOB_PATTERN,
+    version: Optional[str] = None,
 ) -> List[XPUSMICandidate]:
     """
     Find all xpu-smi binaries matching the glob pattern.
+
+    Parameters
+    ----------
+    glob_pattern : str
+        Glob pattern for finding binaries.
+    version : str, optional
+        If given, only return candidates whose smi_version matches exactly
+        (e.g. ``"1.2.42"``).  This avoids probing every installed version.
 
     Returns candidates sorted by (smi_version descending, aurora_version descending).
     Symlinks labeled "default" are deprioritized.
@@ -175,6 +184,10 @@ def discover_candidates(
         else:
             continue
 
+        # Filter by version if requested
+        if version and c.smi_version != version:
+            continue
+
         candidates.append(c)
 
     # Sort: highest smi_version first; break ties by aurora_version descending
@@ -185,10 +198,18 @@ def discover_candidates(
     return candidates
 
 
-def probe_single(candidate: XPUSMICandidate) -> XPUSMICandidate:
+def probe_single(
+    candidate: XPUSMICandidate,
+    skip_dump: bool = False,
+) -> XPUSMICandidate:
     """
-    Probe a single candidate: run discovery, then a quick dump.
-    Mutates and returns the candidate with results.
+    Probe a single candidate: run discovery, then optionally a quick dump.
+
+    Parameters
+    ----------
+    skip_dump : bool
+        If True, skip the validation dump (~7s) after a successful discovery.
+        The first real ``snapshot()`` call will serve as implicit validation.
     """
     env = _build_env(candidate)
 
@@ -208,6 +229,10 @@ def probe_single(candidate: XPUSMICandidate) -> XPUSMICandidate:
         candidate.error = f"discovery exception: {e}"
 
     if not candidate.discovery_ok:
+        return candidate
+
+    if skip_dump:
+        candidate.dump_ok = True
         return candidate
 
     # --- quick dump (1 sample, all devices, basic metrics) ---
@@ -234,19 +259,21 @@ def probe_single(candidate: XPUSMICandidate) -> XPUSMICandidate:
 def probe_versions(
     glob_pattern: str = _GLOB_PATTERN,
     verbose: bool = False,
+    version: Optional[str] = None,
+    skip_dump: bool = False,
 ) -> List[XPUSMICandidate]:
     """
     Discover all xpu-smi binaries and probe each one.
     Returns the full list with probe results populated.
     """
-    candidates = discover_candidates(glob_pattern)
+    candidates = discover_candidates(glob_pattern, version=version)
     n = len(candidates)
     logger.info(f"Found {n} xpu-smi candidate(s), probing...")
 
     for c in candidates:
         label = f"v{c.smi_version}" if c.smi_version != "default" else "default"
         logger.info(f"  Trying {label} ({c.aurora_version}) ...")
-        probe_single(c)
+        probe_single(c, skip_dump=skip_dump)
 
         if c.discovery_ok:
             logger.info(f"  {label}: discovery OK, {c.num_devices} device(s)")
@@ -265,12 +292,25 @@ def probe_versions(
 def find_best_binary(
     glob_pattern: str = _GLOB_PATTERN,
     verbose: bool = False,
+    version: Optional[str] = None,
+    skip_dump: bool = False,
 ) -> XPUSMICandidate:
     """
     Return the best working xpu-smi binary.
+
+    Parameters
+    ----------
+    version : str, optional
+        Pin to a specific xpu-smi version (e.g. ``"1.2.42"``).
+        Skips probing all other candidates.
+    skip_dump : bool
+        If True, skip the validation dump during probe (~7s saved).
+        The first ``snapshot()`` call validates implicitly.
+
     Raises XPUSMINotFoundError if none work.
     """
-    candidates = probe_versions(glob_pattern, verbose=verbose)
+    candidates = probe_versions(glob_pattern, verbose=verbose, version=version,
+                                skip_dump=skip_dump)
     for c in candidates:
         if c.discovery_ok and c.dump_ok:
             logger.info(

@@ -37,7 +37,10 @@ from .metrics import (
     snapshot_sync,
     snapshot_tensor,
 )
-from .probe import XPUSMICandidate, XPUSMINotFoundError, find_best_binary, _build_env
+from .probe import (
+    XPUSMICandidate, XPUSMINotFoundError,
+    find_best_binary, discover_candidates, _build_env,
+)
 
 logger = logging.getLogger("xpu_smi")
 
@@ -54,13 +57,29 @@ class XPUMonitor:
         If True (default), automatically find the best binary at init.
     metric_ids : str
         Comma-separated xpu-smi metric IDs for dump calls.
+    version : str, optional
+        Pin to a specific xpu-smi version (default ``"1.2.42"``).
+        Set to ``None`` to probe all installed versions.
+    num_devices : int, optional
+        Number of XPU devices (default ``6``).  When both *version* and
+        *num_devices* are set, init skips all subprocess calls (~0s).
+        Set to ``None`` to discover via ``xpu-smi discovery`` (~2.5s).
     """
+
+    #: Default xpu-smi version to probe.  Change this when a newer
+    #: version is validated on Aurora.
+    DEFAULT_VERSION = "1.2.42"
+
+    #: Default device count for Aurora nodes (6 × Intel Max 1550).
+    DEFAULT_NUM_DEVICES = 6
 
     def __init__(
         self,
         binary_path: Optional[str] = None,
         auto_probe: bool = True,
         metric_ids: str = METRICS_STANDARD,
+        version: Optional[str] = DEFAULT_VERSION,
+        num_devices: Optional[int] = DEFAULT_NUM_DEVICES,
     ):
         self._binary: Optional[str] = None
         self._env: dict = {}
@@ -81,16 +100,36 @@ class XPUMonitor:
         if binary_path:
             self._init_from_path(binary_path)
         elif auto_probe:
-            self._init_from_probe()
+            self._init_from_probe(version=version, num_devices=num_devices)
 
     # ------------------------------------------------------------------
     # Initialization helpers
     # ------------------------------------------------------------------
 
-    def _init_from_probe(self) -> None:
+    def _init_from_probe(
+        self,
+        version: Optional[str] = None,
+        num_devices: Optional[int] = None,
+    ) -> None:
         """Auto-discover the best xpu-smi binary."""
+        # Fast path: version + num_devices known → filesystem glob only,
+        # no subprocess calls at all (~0s instead of ~10s).
+        if version and num_devices:
+            candidates = discover_candidates(version=version)
+            if candidates:
+                c = candidates[0]
+                c.num_devices = num_devices
+                c.discovery_ok = True
+                c.dump_ok = True
+                self._set_candidate(c)
+                return
+            logger.warning(
+                f"No xpu-smi v{version} binary found, falling back to full probe"
+            )
+
         try:
-            best = find_best_binary()
+            best = find_best_binary(version=version,
+                                    skip_dump=version is not None)
             self._set_candidate(best)
         except XPUSMINotFoundError:
             logger.warning("No working xpu-smi found — monitor unavailable")

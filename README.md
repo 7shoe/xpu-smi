@@ -12,13 +12,13 @@ sync/async Pythonic APIs for monitoring Intel Data Center GPU Max 1550 devices.
 ## Install
 
 ```bash
-# Minimal (no CPU/RAM metrics)
+# minimal (no CPU/RAM metrics)
 pip install xpu-smi
 
-# With CPU/RAM monitoring
+# w/ CPU/RAM metrics
 pip install xpu-smi[cpu]
 
-# Editable dev install on Aurora
+# editable
 pip install -e ".[all]" --break-system-packages
 ```
 
@@ -27,14 +27,15 @@ pip install -e ".[all]" --break-system-packages
 ```python
 from xpu_smi import XPUMonitor
 
-mon = XPUMonitor()           # auto-probes /opt/aurora/*/support/tools/xpu-smi/...
-print(mon)                   # XPUMonitor(available, 6 devices, v1.2.42)
+# default: no subprocess calls (via v1.2.42, 6 devices)
+mon = XPUMonitor()           
+print(mon)
 
 # Blocking snapshot (~7s due to xpu-smi latency)
 snap = mon.snapshot()
-print(f"Total power: {snap['xpu_power_total_w']:.0f} W")
-print(f"Max temp:    {snap['xpu_temp_max_c']:.1f} °C")
-print(f"Memory used: {snap['xpu_mem_used_total_mib']:.0f} MiB")
+print(f"Total power: {snap.get('xpu_power_total_w', 0):.0f} W")
+print(f"Max temp:    {snap.get('xpu_temp_max_c', 0):.1f} °C")
+print(f"Memory used: {snap.get('xpu_mem_used_total_mib', 0):.0f} MiB")
 ```
 
 ## CLI
@@ -68,29 +69,29 @@ python test_xpu_smi_standalone.py --badge
 Example output on a compute node:
 
 ```
-  ✓  19 passed
+  ✓  22 passed
   ○   0 skipped
-  19/19 tests OK (100%)
+  22/22 tests OK (100%)
 ```
 
 Example output on a login node:
 
 ```
   ✓  14 passed
-  ○   5 skipped
+  ○   8 skipped
   14/14 tests OK (100%)
 ```
 
-## Wiring into FSDP Training
+## Wiring into Training
 
 ```python
 from xpu_smi import XPUMonitor
 
-# In your training script init
+# init
 mon = XPUMonitor()
 mon.start_async(interval=15.0)   # background thread, non-blocking reads
 
-# Inside training loop
+# inside training loop
 for step, batch in enumerate(dataloader):
     loss = train_step(batch)
 
@@ -136,6 +137,8 @@ python -c "from xpu_smi.probe import diagnose_environment; print(diagnose_enviro
 | All versions fail | Broken SDK installs | `module load xpu-smi/1.2.42` or set `XPU_SMI_PATH` |
 
 ### Known xpu-smi Version Status
+
+Based on experiments in March 2026.
 
 | Version | Status | Notes |
 |---------|--------|-------|
