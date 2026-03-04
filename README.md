@@ -1,6 +1,6 @@
 # xpu-smi
 
-![tests](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fsiebenschuh%2Fintel-xpu%2Fmain%2Ftests%2Fbadge.json&query=%24.message&label=tests&colorB=yellowgreen)
+![tests](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2F7shoe%2Fxpu-smi%2Fmain%2Ftests%2Fbadge.json&query=%24.message&label=tests&color=brightgreen)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![platform](https://img.shields.io/badge/platform-Aurora%20%7C%20Intel%20XPU-blue)
 
